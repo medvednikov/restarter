@@ -13,39 +13,52 @@ fn main() {
 	website := os.args[1]
 	word := os.args[2]
 	service := os.args[3]
-	println('Monitoring ${website} for "${word}", will restart ${service} on failure')
+	log_path := '/var/log/${service}_restarter.log'
+	log_message(log_path, 'Monitoring ${website} for "${word}", will restart ${service} on failure')
 	for {
-		check_and_restart(website, word, service)
+		check_and_restart(log_path, website, word, service)
 		time.sleep(60 * time.second)
 	}
 }
 
-fn check_and_restart(website string, word string, service string) {
-	println('[${time.now()}] Checking ${website}...')
+fn log_message(log_path string, msg string) {
+	line := '[${time.now()}] ${msg}\n'
+	mut f := os.open_append(log_path) or {
+		eprintln('Failed to open log file: ${err}')
+		return
+	}
+	f.write_string(line) or {
+		eprintln('Failed to write to log file: ${err}')
+	}
+	f.close()
+}
+
+fn check_and_restart(log_path string, website string, word string, service string) {
+	log_message(log_path, 'Checking ${website}...')
 	resp := http.get(website) or {
-		println('Website is down: ${err}')
-		restart_service(service)
+		log_message(log_path, 'Website is down: ${err}')
+		restart_service(log_path, service)
 		return
 	}
 	if resp.status_code < 200 || resp.status_code >= 400 {
-		println('Bad status code: ${resp.status_code}')
-		restart_service(service)
+		log_message(log_path, 'Bad status code: ${resp.status_code}')
+		restart_service(log_path, service)
 		return
 	}
 	if !resp.body.contains(word) {
-		println('Word "${word}" not found in response')
-		restart_service(service)
+		log_message(log_path, 'Word "${word}" not found in response')
+		restart_service(log_path, service)
 		return
 	}
-	println('OK')
+	log_message(log_path, 'OK')
 }
 
-fn restart_service(service string) {
-	println('Restarting service: ${service}')
+fn restart_service(log_path string, service string) {
+	log_message(log_path, 'Restarting service: ${service}')
 	result := os.execute('systemctl restart ${service}')
 	if result.exit_code != 0 {
-		eprintln('Failed to restart service: ${result.output}')
+		log_message(log_path, 'ERROR: Failed to restart service: ${result.output}')
 	} else {
-		println('Service restarted successfully')
+		log_message(log_path, 'Service restarted successfully')
 	}
 }
