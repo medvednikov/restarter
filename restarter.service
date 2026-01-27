@@ -1,0 +1,14 @@
+[Unit]
+Description=Website Monitor and Service Restarter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/sleep 10
+ExecStart=/Users/alex/code/restarter/restarter.vsh https://example.com "Welcome" nginx
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
