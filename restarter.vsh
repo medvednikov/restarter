@@ -1,4 +1,4 @@
-#!/usr/bin/env -S v run
+#!/usr/bin/env -S v crun
 
 import net.http
 import os
